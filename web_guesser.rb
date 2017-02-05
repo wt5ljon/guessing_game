@@ -1,35 +1,82 @@
 require 'sinatra'
 require 'sinatra/reloader'
 
-def check_guess(guess, number)
-	if number < guess
-		if number < guess - 5
-			result = "Way too high!"
-			color = "red"
-		else
-			result = "Too high!"
-			color = "orchid"
-		end
-	elsif number > guess
-		if number > guess + 5
-			result = "Way too low!"
-			color = "red"
-		else
-			result = "Too low!"
-			color = "orchid"
-		end
-	else
-		result = "You got it right!"
-		color = "green"
+class Guessing_game
+	attr_accessor :guess, :secret_number, :color, :message, :remaining
+
+	def initialize
+		@color = "white"
+		@message = ""
+		@secret_number = -1
+		@remaining = 5
 	end
-	return result, color
+
+	def get_secret_number
+		@secret_number = rand(100)
+	end
+
+	def check_guess
+		if @secret_number < @guess.to_i
+			@remaining -= 1
+			if @secret_number < (@guess.to_i - 5)
+				@message = "Way too high ... Guess again!"
+				@color = "red"
+			else
+				@message = "Too high ... Guess again!"
+				@color = "orchid"
+			end
+		elsif @secret_number > @guess.to_i
+			@remaining -= 1
+			if @secret_number > @guess.to_i + 5
+				@message = "Way too low ... Guess again!"
+				@color = "red"
+			else
+				@message = "Too low ... Guess again!"
+				@color = "orchid"
+			end
+		else
+			@message = "You got it right ... starting new game!"
+			@color = "green"
+			self.get_secret_number
+			@remaining = 5
+		end
+	end
 end
 
-number = rand(100)
-message = ""
+game = Guessing_game.new
+game.get_secret_number
 get '/' do
-	guess = params['guess']
-	message, color = check_guess(guess.to_i, number)
-	erb :index, :locals => {:number => number, :message => message, :color => color}
+	game.guess = params['guess']
+	if game.guess == nil
+		erb :index, :locals => {:number => game.secret_number, 
+			  :message => "", :color => "white", :guesses_left => "", 
+				:last => "", :cheat => ""}
+	else
+		game.check_guess
+		last_guess = "Last guess: #{game.guess}"
+		if game.remaining == 0
+			game.message = "You lose! SECRET NUMBER: #{game.secret_number} ... starting new game"
+			game.get_secret_number
+			game.remaining = 5
+			guesses_left_message = "You have #{game.remaining} guesses remaining"
+			erb :index, :locals => {:number => game.secret_number, 
+					:message => game.message, :color => "white", 
+					:guesses_left => guesses_left_message, :last => last_guess,
+					:cheat => ""}
+		else
+			guesses_left_message = "You have #{game.remaining} guesses remaining"
+			if params['cheat'] == "true"
+				erb :index, :locals => {:number => game.secret_number, 
+						:message => game.message, :color => game.color, 
+						:guesses_left => guesses_left_message, :last => last_guess,
+						:cheat => "The SECRET NUMBER: #{game.secret_number}"}
+			else
+				erb :index, :locals => {:number => game.secret_number, 
+						:message => game.message, :color => game.color, 
+						:guesses_left => guesses_left_message, :last => last_guess,
+						:cheat => ""}
+			end
+		end
+	end
 end
 
